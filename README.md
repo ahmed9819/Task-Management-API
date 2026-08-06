@@ -104,6 +104,9 @@ TaskManagementAPI
 
 ---
 
+# Database 
+![Database Table](image.png)
+
 # 🚀 Getting Started
 
 ## Clone the repository
