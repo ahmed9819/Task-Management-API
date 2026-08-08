@@ -36,3 +36,6 @@ Thumbs.db
 # Coverage
 .coverage
 htmlcov/
+
+# Docker
+docker-compose.override.yml
