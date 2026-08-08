@@ -1,116 +1,131 @@
 # 🚀 Task Management API
 
-A production-oriented **Task Management REST API** built with **FastAPI**, designed using clean backend architecture principles such as **Layered Architecture**, **Repository Pattern**, **Dependency Injection**, asynchronous database access, and **Alembic database migrations**.
+A production-oriented **Task Management REST API** built with **FastAPI**, designed using clean backend engineering practices such as **Layered Architecture**, **Repository Pattern**, **Dependency Injection**, asynchronous database access, and **database migrations with Alembic**.
 
-The application is containerized using **Docker** and uses **PostgreSQL** as its persistent database.
+The application started as an in-memory CRUD API and was progressively extended to use persistent database storage and containerized infrastructure. The current implementation uses **PostgreSQL**, **SQLAlchemy 2.x**, **Alembic**, and **Docker Compose**.
 
-This project was developed as part of my **Backend Engineering Internship at FlyRankAI** to strengthen backend engineering fundamentals and gain practical experience building maintainable, scalable, and production-oriented backend systems.
+This project was developed as part of my **Backend Engineering Internship at FlyRankAI** to strengthen practical backend engineering skills and understand how production-oriented backend systems are structured, configured, and deployed.
 
 ---
 
 ## 📌 Features
 
 * ✅ Create, Read, Update, and Delete (CRUD) Tasks
-* ✅ Async FastAPI endpoints
-* ✅ PostgreSQL database integration
-* ✅ SQLAlchemy 2.0 Async ORM
+* ✅ FastAPI REST API
+* ✅ Asynchronous API endpoints
+* ✅ PostgreSQL database
+* ✅ SQLAlchemy 2.x Async ORM
 * ✅ Alembic database migrations
-* ✅ Dependency Injection
 * ✅ Repository Pattern
 * ✅ Service Layer for business logic
-* ✅ Pydantic request & response validation
-* ✅ Environment-based configuration
+* ✅ Dependency Injection
+* ✅ Pydantic v2 request/response validation
+* ✅ Async database sessions with `asyncpg`
 * ✅ Docker containerization
 * ✅ Docker Compose orchestration
+* ✅ PostgreSQL data persistence using Docker volumes
 * ✅ PostgreSQL health checks
-* ✅ Persistent PostgreSQL storage using Docker volumes
-* ✅ Automatic API documentation with Swagger UI & ReDoc
-* ✅ Layered and maintainable project structure
+* ✅ API container waits for a healthy database
+* ✅ Environment-based configuration
+* ✅ Automatic API documentation with Swagger UI and ReDoc
+* ✅ Clean and maintainable project structure
 
 ---
 
 # 🏗️ Architecture
 
-The application follows a layered architecture where each layer has a clearly defined responsibility.
+The application follows a layered architecture to separate responsibilities and make the codebase easier to maintain and extend.
 
 ```text
-                    Client
-                      │
-                      ▼
-              ┌───────────────┐
-              │    Router     │
-              │   API Layer   │
-              └───────┬───────┘
-                      │
-                      ▼
-              ┌───────────────┐
-              │    Service    │
-              │ Business Logic│
-              └───────┬───────┘
-                      │
-                      ▼
-              ┌───────────────┐
-              │  Repository   │
-              │ Data Access   │
-              └───────┬───────┘
-                      │
-                      ▼
-              ┌───────────────┐
-              │  PostgreSQL   │
-              │   Database    │
-              └───────────────┘
+                    ┌─────────────────┐
+                    │     Client      │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │  API / Routers  │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │  Service Layer  │
+                    │ Business Logic  │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │Repository Layer │
+                    │ DB Operations   │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │   SQLAlchemy    │
+                    │   Async ORM     │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │   PostgreSQL    │
+                    └─────────────────┘
 ```
 
 ### Layer Responsibilities
 
-**Router / API Layer**
+**API / Router Layer**
 
-* Handles HTTP requests and responses.
-* Defines API endpoints.
-* Performs request/response integration with the service layer.
+Responsible for:
+
+* Handling HTTP requests
+* Receiving request data
+* Calling the appropriate service
+* Returning HTTP responses
 
 **Service Layer**
 
-* Contains application and business logic.
-* Coordinates operations between routers and repositories.
-* Keeps business logic separate from HTTP and database concerns.
+Responsible for:
+
+* Business logic
+* Application-level rules
+* Coordinating repository operations
 
 **Repository Layer**
 
-* Handles database operations.
-* Executes queries through SQLAlchemy.
-* Keeps database-access logic isolated from the service layer.
+Responsible for:
+
+* Database queries
+* Creating, retrieving, updating, and deleting database records
+* Abstracting database operations from the service layer
 
 **Database Layer**
 
-* Manages asynchronous SQLAlchemy engine and sessions.
-* Provides database sessions through FastAPI dependency injection.
+Responsible for:
+
+* Creating asynchronous database connections
+* Managing SQLAlchemy sessions
+* Providing database sessions through FastAPI dependency injection
 
 ---
 
 # 🐳 Docker Architecture
 
-The application runs as multiple services managed by **Docker Compose**.
+The application runs as multiple services using Docker Compose.
 
 ```text
-                    Host Machine
-                         │
-                         │
-                 Docker Compose
-                         │
-          ┌──────────────┴──────────────┐
-          │                             │
-          ▼                             ▼
-   ┌──────────────┐              ┌──────────────┐
-   │   taskapi    │              │    taskdb    │
-   │              │              │              │
-   │   FastAPI    │─────────────▶│  PostgreSQL  │
-   │   + Uvicorn  │   network    │              │
-   │   Port 8000  │              │   Port 5432  │
-   └──────────────┘              └──────┬───────┘
-                                        │
-                                        ▼
-                               postgres_data volume
+                   Docker Compose
+                        │
+             ┌──────────┴──────────┐
+             │                     │
+             ▼                     ▼
+      ┌─────────────┐       ┌─────────────┐
+      │   FastAPI   │       │ PostgreSQL  │
+      │   taskapi   │──────▶│   taskdb    │
+      │   :8000     │       │    :5432    │
+      └─────────────┘       └──────┬──────┘
+                                   │
+                                   ▼
+                            Docker Volume
+                          postgres_data
 ```
 
 The FastAPI container communicates with PostgreSQL using the Docker Compose service name:
@@ -119,13 +134,35 @@ The FastAPI container communicates with PostgreSQL using the Docker Compose serv
 db
 ```
 
-Therefore, inside the Docker network, the database connection uses:
+Therefore, inside the Docker network the database URL uses:
 
 ```text
-postgresql+asyncpg://appuser:password@db:5432/tasksdb
+postgresql+asyncpg://<user>:<password>@db:5432/<database>
 ```
 
-`localhost` is **not** used for container-to-container database communication because `localhost` inside the API container refers to the API container itself.
+The browser, however, accesses the FastAPI application through the host machine:
+
+```text
+http://localhost:8000
+```
+
+---
+
+# 🛠️ Tech Stack
+
+| Technology     | Purpose                               |
+| -------------- | ------------------------------------- |
+| Python 3.11    | Backend programming language          |
+| FastAPI        | REST API framework                    |
+| SQLAlchemy 2.x | Async ORM                             |
+| PostgreSQL 16  | Relational database                   |
+| asyncpg        | PostgreSQL asynchronous driver        |
+| Alembic        | Database schema migrations            |
+| Pydantic v2    | Data validation and serialization     |
+| Uvicorn        | ASGI application server               |
+| Docker         | Application containerization          |
+| Docker Compose | Multi-container orchestration         |
+| Git / GitHub   | Version control and source management |
 
 ---
 
@@ -136,7 +173,7 @@ TaskManagementAPI/
 │
 ├── alembic/
 │   ├── versions/
-│   │   └── <migration_files>
+│   │   └── <migration-files>
 │   ├── env.py
 │   └── script.py.mako
 │
@@ -169,6 +206,7 @@ TaskManagementAPI/
 │   └── main.py
 │
 ├── .dockerignore
+├── .env.example
 ├── .gitignore
 ├── alembic.ini
 ├── docker-compose.yml
@@ -179,40 +217,39 @@ TaskManagementAPI/
 
 ---
 
-# ⚙️ Tech Stack
+# 🗄️ Database
 
-| Technology         | Purpose                            |
-| ------------------ | ---------------------------------- |
-| **Python 3.11**    | Backend programming language       |
-| **FastAPI**        | REST API framework                 |
-| **Uvicorn**        | ASGI server                        |
-| **SQLAlchemy 2.0** | Async ORM and database access      |
-| **PostgreSQL 16**  | Relational database                |
-| **asyncpg**        | Asynchronous PostgreSQL driver     |
-| **Alembic**        | Database schema migrations         |
-| **Pydantic v2**    | Request/response validation        |
-| **Docker**         | Application containerization       |
-| **Docker Compose** | Multi-container orchestration      |
-| **Git & GitHub**   | Version control and source hosting |
+The application currently uses **PostgreSQL 16**.
+
+PostgreSQL runs inside its own Docker container:
+
+```text
+Container: taskdb
+Port: 5432
+Database: tasksdb
+```
+
+The application communicates with PostgreSQL through SQLAlchemy's asynchronous engine using `asyncpg`.
+
+### Database Connection
+
+Inside Docker Compose, the application uses:
+
+```text
+postgresql+asyncpg://<POSTGRES_USER>:<POSTGRES_PASSWORD>@db:5432/<POSTGRES_DB>
+```
+
+The important part is:
+
+```text
+@db
+```
+
+`db` is the Docker Compose service name and acts as the hostname between the containers.
 
 ---
 
-# 🗄️ Database
-
-The application uses **PostgreSQL 16** for persistent data storage.
-
-The database contains the `tasks` table, which stores task information such as:
-
-* `id`
-* `title`
-* `description`
-* `completed`
-* `created_at`
-* `updated_at`
-
-Database schema changes are managed through **Alembic migrations** rather than manually modifying the database.
-
-### Database Persistence
+# 💾 Database Persistence
 
 PostgreSQL data is stored using a Docker named volume:
 
@@ -236,39 +273,39 @@ docker compose down
 docker compose up -d
 ```
 
-The PostgreSQL container can be recreated while the database remains persisted in the Docker volume.
+will recreate the containers while keeping the PostgreSQL data stored in the Docker volume.
+
+> **Note:** `docker compose down -v` removes the named volumes and therefore deletes the persisted PostgreSQL data.
 
 ---
 
 # 🔐 Environment Variables
 
-Sensitive configuration is not hard-coded into the application.
+Database credentials and configuration are supplied through environment variables rather than hard-coded directly into the application.
 
-The project uses environment variables for database configuration.
-
-Example `.env`:
+Example environment variables:
 
 ```env
-DATABASE_URL=postgresql+asyncpg://appuser:postgres@localhost:5432/tasksdb
-
 POSTGRES_USER=appuser
-POSTGRES_PASSWORD=postgres
+POSTGRES_PASSWORD=your_password
 POSTGRES_DB=tasksdb
+
+DATABASE_URL=postgresql+asyncpg://appuser:your_password@localhost:5432/tasksdb
 ```
 
-> **Important:** Do not commit `.env` files containing real credentials to GitHub.
+The actual `.env` file is intentionally excluded from Git using `.gitignore`.
 
-The `.env` file is excluded through `.gitignore`.
+A `.env.example` file is provided as a template for developers setting up the project locally.
 
 ### Docker Database URL
 
-Inside Docker, the API uses the PostgreSQL service name `db` instead of `localhost`:
+When the FastAPI application runs inside Docker, it must use the PostgreSQL service name instead of `localhost`:
 
 ```text
-postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+postgresql+asyncpg://appuser:your_password@db:5432/tasksdb
 ```
 
-This allows Docker's internal network to resolve the PostgreSQL container correctly.
+This is because `localhost` inside the API container refers to the API container itself, not the PostgreSQL container.
 
 ---
 
@@ -279,13 +316,15 @@ This allows Docker's internal network to resolve the PostgreSQL container correc
 Make sure the following are installed:
 
 * Docker Desktop
-* Docker Compose
+* Git
 
-Verify the installation:
+Verify Docker:
 
 ```bash
 docker --version
 ```
+
+Verify Docker Compose:
 
 ```bash
 docker compose version
@@ -293,13 +332,15 @@ docker compose version
 
 ---
 
-# 🚀 Getting Started
+# 🚀 Running the Application with Docker
 
-## 1. Clone the Repository
+## 1. Clone the repository
 
 ```bash
 git clone https://github.com/ahmed9819/TaskManagementAPI.git
 ```
+
+Navigate into the project:
 
 ```bash
 cd TaskManagementAPI
@@ -307,28 +348,23 @@ cd TaskManagementAPI
 
 ---
 
-## 2. Configure Environment Variables
+## 2. Create the environment file
 
 Create a `.env` file in the project root.
 
+Example:
+
 ```env
 POSTGRES_USER=appuser
-POSTGRES_PASSWORD=postgres
+POSTGRES_PASSWORD=your_password
 POSTGRES_DB=tasksdb
-DATABASE_URL=postgresql+asyncpg://appuser:postgres@localhost:5432/tasksdb
 ```
 
-For Docker Compose, the API container receives the database URL using the PostgreSQL service name:
-
-```text
-postgresql+asyncpg://appuser:postgres@db:5432/tasksdb
-```
+Do **not** commit the real `.env` file to GitHub.
 
 ---
 
-# 🏗️ Build the Docker Image
-
-Build the FastAPI application image:
+## 3. Build the application image
 
 ```bash
 docker compose build
@@ -336,38 +372,44 @@ docker compose build
 
 ---
 
-# ▶️ Start the Application
-
-Start both the API and PostgreSQL services:
+## 4. Start the services
 
 ```bash
 docker compose up -d
 ```
 
-Check running containers:
-
-```bash
-docker compose ps
-```
-
-You should see:
+Docker Compose starts:
 
 ```text
 taskapi
 taskdb
 ```
 
-The API will be available at:
+The API depends on PostgreSQL becoming healthy before the API container starts.
 
-```text
-http://localhost:8000
+---
+
+## 5. Check running containers
+
+```bash
+docker compose ps
+```
+
+You should see both services running.
+
+You can also use:
+
+```bash
+docker ps
 ```
 
 ---
 
 # ❤️ PostgreSQL Health Check
 
-Docker Compose uses a PostgreSQL health check to ensure the database is ready before starting the API.
+The PostgreSQL service includes a Docker health check using `pg_isready`.
+
+Example:
 
 ```yaml
 healthcheck:
@@ -377,7 +419,7 @@ healthcheck:
   retries: 5
 ```
 
-The API depends on the database being healthy:
+The API uses:
 
 ```yaml
 depends_on:
@@ -385,39 +427,69 @@ depends_on:
     condition: service_healthy
 ```
 
-This prevents the API container from starting before PostgreSQL is ready to accept connections.
+This ensures Docker waits for PostgreSQL to report a healthy status before starting the API service.
+
+This is more reliable than simply checking whether the PostgreSQL container has started.
 
 ---
 
-# 🗃️ Running Alembic Migrations
+# 🔄 Running Alembic Migrations
 
-After starting the containers, run the database migrations.
+Alembic is used to manage database schema changes.
 
-### Option 1 — Run Alembic inside the API container
+When the application is running through Docker, run migrations inside the API container:
 
 ```bash
-docker compose exec api alembic upgrade head
+docker exec -it taskapi alembic upgrade head
 ```
 
-This applies all migrations up to the latest version.
+This applies all migrations up to the latest revision.
 
 To check the current migration:
 
 ```bash
-docker compose exec api alembic current
+docker exec -it taskapi alembic current
 ```
 
 To view migration history:
 
 ```bash
-docker compose exec api alembic history
+docker exec -it taskapi alembic history
 ```
 
 ---
 
-# 📖 API Documentation
+# 🧪 Verify the Database
 
-Once the application is running, FastAPI automatically provides interactive API documentation.
+You can connect directly to PostgreSQL using `psql`:
+
+```bash
+docker exec -it taskdb psql -U appuser -d tasksdb
+```
+
+Inside PostgreSQL, list tables:
+
+```sql
+\dt
+```
+
+View tasks:
+
+```sql
+SELECT * FROM tasks;
+```
+
+Exit:
+
+```sql
+\q
+```
+
+---
+
+# 🌐 API Documentation
+
+Once the application is running, open:
 
 ### Swagger UI
 
@@ -437,45 +509,19 @@ http://localhost:8000/redoc
 http://localhost:8000/openapi.json
 ```
 
+Swagger UI can be used to interactively test the API endpoints.
+
 ---
 
 # 📌 API Endpoints
 
-| Method   | Endpoint      | Description           |
-| -------- | ------------- | --------------------- |
-| `POST`   | `/tasks`      | Create a new task     |
-| `GET`    | `/tasks`      | Retrieve all tasks    |
-| `GET`    | `/tasks/{id}` | Retrieve a task by ID |
-| `PUT`    | `/tasks/{id}` | Update a task         |
-| `DELETE` | `/tasks/{id}` | Delete a task         |
-
----
-
-# 🐘 Access PostgreSQL
-
-You can access the PostgreSQL database directly from the running container:
-
-```bash
-docker exec -it taskdb psql -U appuser -d tasksdb
-```
-
-List database tables:
-
-```sql
-\dt
-```
-
-View tasks:
-
-```sql
-SELECT * FROM tasks;
-```
-
-Exit PostgreSQL:
-
-```sql
-\q
-```
+| Method | Endpoint      | Description           |
+| ------ | ------------- | --------------------- |
+| POST   | `/tasks`      | Create a new task     |
+| GET    | `/tasks`      | Retrieve all tasks    |
+| GET    | `/tasks/{id}` | Retrieve a task by ID |
+| PUT    | `/tasks/{id}` | Update a task         |
+| DELETE | `/tasks/{id}` | Delete a task         |
 
 ---
 
@@ -493,6 +539,18 @@ docker compose up -d
 docker compose down
 ```
 
+### Rebuild the application
+
+```bash
+docker compose build
+```
+
+### Rebuild and start
+
+```bash
+docker compose up -d --build
+```
+
 ### View running containers
 
 ```bash
@@ -502,10 +560,22 @@ docker compose ps
 ### View API logs
 
 ```bash
+docker logs taskapi
+```
+
+or:
+
+```bash
 docker compose logs api
 ```
 
 ### View PostgreSQL logs
+
+```bash
+docker logs taskdb
+```
+
+or:
 
 ```bash
 docker compose logs db
@@ -517,25 +587,19 @@ docker compose logs db
 docker compose logs -f api
 ```
 
-### Rebuild the application
+### Follow PostgreSQL logs
 
 ```bash
-docker compose build
+docker compose logs -f db
 ```
 
-### Rebuild and restart
+### Open a shell inside the API container
 
 ```bash
-docker compose up -d --build
+docker exec -it taskapi /bin/bash
 ```
 
-### Check container health
-
-```bash
-docker ps
-```
-
-### Access PostgreSQL
+### Connect to PostgreSQL
 
 ```bash
 docker exec -it taskdb psql -U appuser -d tasksdb
@@ -543,97 +607,172 @@ docker exec -it taskdb psql -U appuser -d tasksdb
 
 ---
 
-# 💾 Database Persistence
+# 🔌 Local Development Without Docker
 
-PostgreSQL uses a Docker named volume:
+Docker is the recommended way to run the complete application, but the API can also be run directly from a Python virtual environment if PostgreSQL is available locally.
+
+Create a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+Activate it on Windows:
+
+```bash
+.venv\Scripts\activate
+```
+
+Activate it on Linux/macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Configure the database URL in `.env`:
+
+```env
+DATABASE_URL=postgresql+asyncpg://appuser:your_password@localhost:5432/tasksdb
+```
+
+Run migrations:
+
+```bash
+alembic upgrade head
+```
+
+Start the API:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+The API will then be available at:
 
 ```text
-postgres_data
+http://localhost:8000
 ```
-
-The volume persists database data independently of the PostgreSQL container.
-
-Therefore:
-
-```bash
-docker compose down
-docker compose up -d
-```
-
-does not delete the stored database records.
-
-To intentionally remove the database volume as well:
-
-```bash
-docker compose down -v
-```
-
-> **Warning:** Removing the volume deletes the PostgreSQL data stored in that volume.
 
 ---
 
 # 🧠 Key Backend Concepts Practiced
 
-This project was used to apply several backend engineering concepts in a practical application:
+This project provided practical experience with:
 
+* REST API design
+* CRUD operations
 * Layered Architecture
 * Separation of Concerns
 * Repository Pattern
 * Service Layer
 * Dependency Injection
-* Async Programming
-* Async SQLAlchemy Sessions
-* REST API Design
-* Pydantic Validation
+* Async/Await
+* Async SQLAlchemy sessions
 * PostgreSQL
-* Database Migrations with Alembic
-* Environment-based Configuration
-* Docker Containerization
+* SQL queries
+* Database schema design
+* Alembic migrations
+* Environment-based configuration
+* Docker containerization
 * Docker Compose
-* Container Networking
-* Database Persistence
-* Health Checks
-* API Documentation
-* Error Handling
+* Container networking
+* Service dependencies
+* Health checks
+* Persistent Docker volumes
+* API documentation with OpenAPI
+* Error handling
+* Request validation with Pydantic
 
 ---
 
-# 🎯 Learning Outcomes
+# 📈 Engineering Progression
 
-This project strengthened my understanding of how a backend application evolves from a simple CRUD implementation into a more production-oriented system.
+The project was developed incrementally.
 
-Through this project, I learned how to:
+### Stage 1 — CRUD API
 
-* Design a maintainable layered backend architecture.
-* Separate API, business logic, and database responsibilities.
-* Implement database access through the Repository Pattern.
-* Use asynchronous SQLAlchemy sessions with FastAPI.
-* Manage PostgreSQL database schema changes using Alembic.
-* Configure applications using environment variables.
-* Containerize a FastAPI application using Docker.
-* Run FastAPI and PostgreSQL as separate services using Docker Compose.
-* Configure communication between containers using Docker's internal network.
-* Use health checks to control service startup dependencies.
-* Persist PostgreSQL data using Docker volumes.
-* Build and run a backend application in an isolated containerized environment.
+The initial implementation stored tasks in memory.
+
+```text
+Client → FastAPI → In-Memory Data
+```
+
+The limitation was that all data disappeared when the application restarted.
+
+### Stage 2 — Database Persistence
+
+The application was connected to a relational database.
+
+```text
+Client → FastAPI → Service → Repository → Database
+```
+
+This introduced persistent storage and database migrations.
+
+### Stage 3 — Containerization
+
+The application and database were containerized.
+
+```text
+Client
+   │
+   ▼
+FastAPI Container
+   │
+   ▼
+PostgreSQL Container
+   │
+   ▼
+Persistent Docker Volume
+```
+
+This made the development environment more reproducible and separated application infrastructure from the host machine.
 
 ---
 
 # 🔮 Future Improvements
 
-Potential future improvements include:
+Potential future enhancements include:
 
 * JWT Authentication
-* User Registration & Login
+* User registration and login
+* Password hashing
+* Refresh tokens
 * Role-Based Access Control (RBAC)
-* Refresh Tokens
-* Automated Unit & Integration Testing
-* CI/CD Pipeline
-* Structured Logging
-* API Rate Limiting
-* Production configuration management
-* PostgreSQL connection pooling optimization
-* Deployment to a cloud environment
+* Unit and integration testing
+* CI/CD pipeline
+* Structured logging
+* Application monitoring
+* Production deployment
+* Rate limiting
+* API versioning
+
+---
+
+# 🎯 Learning Outcomes
+
+This project strengthened my understanding of how backend systems evolve from a simple CRUD application into a more production-oriented architecture.
+
+Through this project, I learned how to:
+
+* Design APIs independently from their storage implementation
+* Separate HTTP, business logic, and database responsibilities
+* Use the Repository Pattern to abstract database operations
+* Build asynchronous APIs and database interactions
+* Manage relational database schemas using Alembic
+* Containerize applications using Docker
+* Orchestrate multiple services using Docker Compose
+* Connect containers through Docker's internal networking
+* Use health checks to coordinate service startup
+* Persist database data using Docker volumes
+* Keep sensitive configuration outside the source code
+* Structure a backend project for maintainability and future scalability
 
 ---
 
@@ -641,11 +780,13 @@ Potential future improvements include:
 
 **Muhammad Ahmed Bajwa**
 
-Backend Developer
+Junior Backend Developer
 
-* LinkedIn: http://www.linkedin.com/in/muhammad-ahmed-bajwa-08a160264
-* GitHub: https://github.com/ahmed9819
+* LinkedIn: [Muhammad Ahmed Bajwa](https://www.linkedin.com/in/muhammad-ahmed-bajwa-08a160264/)
+* GitHub: [ahmed9819](https://github.com/ahmed9819)
 
 ---
 
-## ⭐ If you found this project useful, consider giving it a star.
+## ⭐ Support
+
+If you found this project useful or interesting, consider giving the repository a ⭐ on GitHub.
