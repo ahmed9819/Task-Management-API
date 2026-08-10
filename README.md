@@ -1,10 +1,10 @@
 # 🚀 Task Management API
 
-A production-oriented **Task Management REST API** built with **FastAPI**, designed using clean backend engineering practices such as **Layered Architecture**, **Repository Pattern**, **Dependency Injection**, asynchronous database access, and **database migrations with Alembic**.
+A production-oriented **Task Management REST API** built with **FastAPI**, designed using clean backend engineering practices such as **Layered Architecture**, **Repository Pattern**, **Dependency Injection**, asynchronous database access, JWT authentication, user-specific data ownership, and database migrations with Alembic.
 
-The application started as an in-memory CRUD API and was progressively extended to use persistent database storage and containerized infrastructure. The current implementation uses **PostgreSQL**, **SQLAlchemy 2.x**, **Alembic**, and **Docker Compose**.
+The application started as an in-memory CRUD API and was progressively extended into a persistent, containerized, and authenticated backend system using **PostgreSQL**, **SQLAlchemy 2.x**, **Alembic**, **Docker Compose**, and **JWT-based authentication**.
 
-This project was developed as part of my **Backend Engineering Internship at FlyRankAI** to strengthen practical backend engineering skills and understand how production-oriented backend systems are structured, configured, and deployed.
+This project was developed as part of my **Backend Engineering Internship at FlyRankAI** to strengthen practical backend engineering skills and understand how production-oriented backend systems are structured, secured, configured, and deployed.
 
 ---
 
@@ -21,6 +21,15 @@ This project was developed as part of my **Backend Engineering Internship at Fly
 * ✅ Dependency Injection
 * ✅ Pydantic v2 request/response validation
 * ✅ Async database sessions with `asyncpg`
+* ✅ JWT-based authentication
+* ✅ Protected API routes
+* ✅ JWT token verification
+* ✅ User identification through JWT `sub` claim
+* ✅ User-specific task ownership
+* ✅ Users can only access their own tasks
+* ✅ Protected task CRUD operations
+* ✅ Authentication logout route
+* ✅ Protected authentication test route
 * ✅ Docker containerization
 * ✅ Docker Compose orchestration
 * ✅ PostgreSQL data persistence using Docker volumes
@@ -37,73 +46,213 @@ This project was developed as part of my **Backend Engineering Internship at Fly
 The application follows a layered architecture to separate responsibilities and make the codebase easier to maintain and extend.
 
 ```text
+                         ┌─────────────────┐
+                         │     Client      │
+                         └────────┬────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │  API / Routers  │
+                         │   HTTP Layer    │
+                         └────────┬────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │  Service Layer  │
+                         │  Business Logic │
+                         └────────┬────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │Repository Layer │
+                         │  DB Operations  │
+                         └────────┬────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │   SQLAlchemy    │
+                         │    Async ORM    │
+                         └────────┬────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │   PostgreSQL    │
+                         └─────────────────┘
+```
+
+### Authentication Flow
+
+JWT authentication is applied before accessing protected endpoints.
+
+```text
                     ┌─────────────────┐
-                    │     Client      │
+                    │      Client     │
+                    └────────┬────────┘
+                             │
+                             │ Bearer JWT
+                             ▼
+                    ┌─────────────────┐
+                    │ Authentication  │
+                    │   Dependency    │
+                    └────────┬────────┘
+                             │
+                             │ Verify JWT
+                             ▼
+                    ┌─────────────────┐
+                    │   JWT Payload   │
+                    │      `sub`      │
+                    └────────┬────────┘
+                             │
+                             │ User ID
+                             ▼
+                    ┌─────────────────┐
+                    │ Protected Task  │
+                    │     Route       │
                     └────────┬────────┘
                              │
                              ▼
                     ┌─────────────────┐
-                    │  API / Routers  │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │  Service Layer  │
-                    │ Business Logic  │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │Repository Layer │
-                    │ DB Operations   │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │   SQLAlchemy    │
-                    │   Async ORM     │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │   PostgreSQL    │
+                    │ Service/Repo    │
+                    │ Filter by user  │
                     └─────────────────┘
 ```
 
-### Layer Responsibilities
+The JWT `sub` claim identifies the authenticated user. The task endpoints use this user ID to ensure that users can only access tasks belonging to them.
 
-**API / Router Layer**
+---
+
+## Layer Responsibilities
+
+### API / Router Layer
 
 Responsible for:
 
 * Handling HTTP requests
 * Receiving request data
+* Extracting the authenticated user's identity
 * Calling the appropriate service
 * Returning HTTP responses
 
-**Service Layer**
+### Authentication Dependency
+
+Responsible for:
+
+* Extracting the Bearer token from the request
+* Verifying the JWT
+* Rejecting invalid or expired tokens
+* Providing the decoded JWT payload to protected routes
+
+### Service Layer
 
 Responsible for:
 
 * Business logic
 * Application-level rules
+* Checking task ownership through repository queries
 * Coordinating repository operations
 
-**Repository Layer**
+### Repository Layer
 
 Responsible for:
 
 * Database queries
 * Creating, retrieving, updating, and deleting database records
+* Filtering tasks by `user_id`
 * Abstracting database operations from the service layer
 
-**Database Layer**
+### Database Layer
 
 Responsible for:
 
 * Creating asynchronous database connections
 * Managing SQLAlchemy sessions
 * Providing database sessions through FastAPI dependency injection
+
+---
+
+# 🔐 Authentication & Authorization
+
+The API uses **JWT (JSON Web Token)** authentication.
+
+A client must provide a valid JWT as a Bearer token when accessing protected endpoints.
+
+Example:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+The authentication dependency:
+
+```python
+get_current_user()
+```
+
+extracts and verifies the token.
+
+The authenticated user's ID is obtained from the JWT's:
+
+```text
+sub
+```
+
+claim.
+
+For example:
+
+```json
+{
+  "sub": "4ab4bedf-cee9-4181-a854-8d7de7551879",
+  "role": "authenticated"
+}
+```
+
+The `sub` value is converted into a UUID and passed through the task service and repository layers.
+
+### User Ownership
+
+Each task contains a:
+
+```text
+user_id
+```
+
+column.
+
+This establishes ownership between a task and the authenticated user.
+
+For example:
+
+```text
+User A
+ ├── Task 1
+ ├── Task 2
+ └── Task 3
+
+User B
+ ├── Task 4
+ └── Task 5
+```
+
+When User A requests their tasks, the repository only retrieves tasks belonging to User A.
+
+This prevents one authenticated user from accessing another user's tasks.
+
+---
+
+# 🚪 Logout
+
+The API provides:
+
+```http
+POST /auth/logout
+```
+
+The logout route is responsible for the application's logout operation.
+
+Because JWT access tokens are stateless, logging out does not require deleting a server-side session in the same way a traditional session-based authentication system would.
+
+The client should discard its stored authentication token after logout.
 
 ---
 
@@ -125,7 +274,7 @@ The application runs as multiple services using Docker Compose.
                                    │
                                    ▼
                             Docker Volume
-                          postgres_data
+                           postgres_data
 ```
 
 The FastAPI container communicates with PostgreSQL using the Docker Compose service name:
@@ -160,6 +309,7 @@ http://localhost:8000
 | Alembic        | Database schema migrations            |
 | Pydantic v2    | Data validation and serialization     |
 | Uvicorn        | ASGI application server               |
+| JWT            | Authentication                        |
 | Docker         | Application containerization          |
 | Docker Compose | Multi-container orchestration         |
 | Git / GitHub   | Version control and source management |
@@ -180,6 +330,7 @@ TaskManagementAPI/
 ├── app/
 │   ├── api/
 │   │   └── routers/
+│   │       ├── auth.py
 │   │       └── tasks.py
 │   │
 │   ├── core/
@@ -189,18 +340,25 @@ TaskManagementAPI/
 │   │   └── database.py
 │   │
 │   ├── dependencies/
+│   │   ├── auth.py
 │   │   └── task.py
 │   │
 │   ├── models/
-│   │   └── task.py
+│   │   ├── task.py
+│   │   └── ...
 │   │
 │   ├── repositories/
 │   │   └── task.py
 │   │
 │   ├── schemas/
-│   │   └── task.py
+│   │   ├── task.py
+│   │   └── ...
+│   │
+│   ├── security/
+│   │   └── jwt.py
 │   │
 │   ├── services/
+│   │   ├── auth_service.py
 │   │   └── task_service.py
 │   │
 │   └── main.py
@@ -214,6 +372,8 @@ TaskManagementAPI/
 ├── requirements.txt
 └── README.md
 ```
+
+> The exact project structure may vary slightly depending on the current implementation.
 
 ---
 
@@ -289,8 +449,6 @@ Example environment variables:
 POSTGRES_USER=appuser
 POSTGRES_PASSWORD=your_password
 POSTGRES_DB=tasksdb
-
-DATABASE_URL=postgresql+asyncpg://appuser:your_password@localhost:5432/tasksdb
 ```
 
 The actual `.env` file is intentionally excluded from Git using `.gitignore`.
@@ -356,11 +514,13 @@ Example:
 
 ```env
 POSTGRES_USER=appuser
-POSTGRES_PASSWORD=your_password
+POSTGRES_PASSWORD=your_secure_password
 POSTGRES_DB=tasksdb
+DATABASE_URL=postgresql+asyncpg://appuser:your_secure_password@localhost:5432/tasksdb
+SUPABASE_URL=your_supabase_url
+SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+SUPABASE_JWKS_URL=your_supabase_jwks_url
 ```
-
-Do **not** commit the real `.env` file to GitHub.
 
 ---
 
@@ -389,19 +549,21 @@ The API depends on PostgreSQL becoming healthy before the API container starts.
 
 ---
 
-## 5. Check running containers
+## 5. Run database migrations
+
+```bash
+docker compose exec api alembic upgrade head
+```
+
+---
+
+## 6. Check running containers
 
 ```bash
 docker compose ps
 ```
 
-You should see both services running.
-
-You can also use:
-
-```bash
-docker ps
-```
+You should see both services running and PostgreSQL reported as healthy.
 
 ---
 
@@ -440,21 +602,19 @@ Alembic is used to manage database schema changes.
 When the application is running through Docker, run migrations inside the API container:
 
 ```bash
-docker exec -it taskapi alembic upgrade head
+docker compose exec api alembic upgrade head
 ```
 
-This applies all migrations up to the latest revision.
-
-To check the current migration:
+Check the current migration:
 
 ```bash
-docker exec -it taskapi alembic current
+docker compose exec api alembic current
 ```
 
-To view migration history:
+View migration history:
 
 ```bash
-docker exec -it taskapi alembic history
+docker compose exec api alembic history
 ```
 
 ---
@@ -464,7 +624,7 @@ docker exec -it taskapi alembic history
 You can connect directly to PostgreSQL using `psql`:
 
 ```bash
-docker exec -it taskdb psql -U appuser -d tasksdb
+docker compose exec db psql -U appuser -d tasksdb
 ```
 
 Inside PostgreSQL, list tables:
@@ -495,6 +655,13 @@ Once the application is running, open:
 
 ```text
 http://localhost:8000/docs
+
+Screenshots:
+![alt text](image-1.png)
+![alt text](image-2.png)
+![alt text](image-3.png)
+![alt text](image-4.png)
+
 ```
 
 ### ReDoc
@@ -509,19 +676,80 @@ http://localhost:8000/redoc
 http://localhost:8000/openapi.json
 ```
 
-Swagger UI can be used to interactively test the API endpoints.
+Swagger UI can be used to interactively test the API.
+
+For protected endpoints:
+
+1. Obtain a valid JWT.
+2. Click **Authorize** in Swagger UI.
+3. Enter the Bearer token.
+4. Execute the protected endpoints.
+
+Example:
+
+```text
+Bearer <your_access_token>
+```
 
 ---
 
 # 📌 API Endpoints
 
-| Method | Endpoint      | Description           |
-| ------ | ------------- | --------------------- |
-| POST   | `/tasks`      | Create a new task     |
-| GET    | `/tasks`      | Retrieve all tasks    |
-| GET    | `/tasks/{id}` | Retrieve a task by ID |
-| PUT    | `/tasks/{id}` | Update a task         |
-| DELETE | `/tasks/{id}` | Delete a task         |
+## Authentication
+
+| Method | Endpoint               | Description                         |
+| ------ | ---------------------- | ----------------------------------- |
+| POST   | `/auth/login`          | Authenticate/login                  |
+| POST   | `/auth/logout`         | Logout                              |
+| GET    | `/auth/test-protected` | Test protected-route authentication |
+
+## Tasks
+
+| Method | Endpoint           | Authentication | Description                         |
+| ------ | ------------------ | -------------- | ----------------------------------- |
+| POST   | `/tasks`           | 🔐 Required    | Create a task                       |
+| GET    | `/tasks`           | 🔐 Required    | Retrieve authenticated user's tasks |
+| GET    | `/tasks/{task_id}` | 🔐 Required    | Retrieve user's task by ID          |
+| PATCH  | `/tasks/{task_id}` | 🔐 Required    | Update user's task                  |
+| DELETE | `/tasks/{task_id}` | 🔐 Required    | Delete user's task                  |
+
+All task endpoints require a valid JWT.
+
+Task queries are scoped to the authenticated user's `user_id`, preventing users from accessing tasks owned by other users.
+
+---
+
+# 🔒 Protected Route Behavior
+
+Without a valid JWT:
+
+```text
+GET /tasks
+        │
+        ▼
+401 Unauthorized
+```
+
+With a valid JWT:
+
+```text
+GET /tasks
+Authorization: Bearer <JWT>
+        │
+        ▼
+JWT Verification
+        │
+        ▼
+Extract `sub`
+        │
+        ▼
+Filter tasks by user_id
+        │
+        ▼
+Return user's tasks
+```
+
+If a task belongs to another user, it is treated as unavailable to the authenticated user rather than exposing another user's data.
 
 ---
 
@@ -560,22 +788,10 @@ docker compose ps
 ### View API logs
 
 ```bash
-docker logs taskapi
-```
-
-or:
-
-```bash
 docker compose logs api
 ```
 
 ### View PostgreSQL logs
-
-```bash
-docker logs taskdb
-```
-
-or:
 
 ```bash
 docker compose logs db
@@ -596,13 +812,13 @@ docker compose logs -f db
 ### Open a shell inside the API container
 
 ```bash
-docker exec -it taskapi /bin/bash
+docker compose exec api /bin/bash
 ```
 
 ### Connect to PostgreSQL
 
 ```bash
-docker exec -it taskdb psql -U appuser -d tasksdb
+docker compose exec db psql -U appuser -d tasksdb
 ```
 
 ---
@@ -635,11 +851,7 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Configure the database URL in `.env`:
-
-```env
-DATABASE_URL=postgresql+asyncpg://appuser:your_password@localhost:5432/tasksdb
-```
+Configure the database connection in `.env`.
 
 Run migrations:
 
@@ -677,12 +889,16 @@ This project provided practical experience with:
 * PostgreSQL
 * SQL queries
 * Database schema design
+* User ownership and data isolation
+* JWT authentication
+* Bearer token authentication
+* JWT payload verification
+* Protected routes
 * Alembic migrations
 * Environment-based configuration
 * Docker containerization
 * Docker Compose
 * Container networking
-* Service dependencies
 * Health checks
 * Persistent Docker volumes
 * API documentation with OpenAPI
@@ -693,7 +909,7 @@ This project provided practical experience with:
 
 # 📈 Engineering Progression
 
-The project was developed incrementally.
+The project was developed incrementally, evolving from a simple CRUD API into an authenticated backend application.
 
 ### Stage 1 — CRUD API
 
@@ -707,15 +923,34 @@ The limitation was that all data disappeared when the application restarted.
 
 ### Stage 2 — Database Persistence
 
-The application was connected to a relational database.
+The application was connected to PostgreSQL.
 
 ```text
-Client → FastAPI → Service → Repository → Database
+Client → FastAPI → Service → Repository → PostgreSQL
 ```
 
 This introduced persistent storage and database migrations.
 
-### Stage 3 — Containerization
+### Stage 3 — Layered Architecture
+
+The application was separated into different layers:
+
+```text
+API
+ │
+ ▼
+Service
+ │
+ ▼
+Repository
+ │
+ ▼
+Database
+```
+
+This improved separation of concerns and made the application easier to maintain.
+
+### Stage 4 — Containerization
 
 The application and database were containerized.
 
@@ -732,26 +967,65 @@ PostgreSQL Container
 Persistent Docker Volume
 ```
 
-This made the development environment more reproducible and separated application infrastructure from the host machine.
+### Stage 5 — JWT Authentication
+
+Authentication was introduced using JWTs.
+
+```text
+Client
+   │
+   │ Bearer Token
+   ▼
+JWT Verification
+   │
+   ▼
+Authenticated User
+   │
+   ▼
+Protected API
+```
+
+### Stage 6 — User-Specific Task Ownership
+
+Tasks were associated with authenticated users through `user_id`.
+
+```text
+Authenticated User
+        │
+        ▼
+     user_id
+        │
+        ▼
+     Task Query
+        │
+        ▼
+Only tasks owned by that user
+```
+
+This prevents users from accessing other users' tasks.
 
 ---
 
-# 🔮 Future Improvements
+# 🧪 API Testing
 
-Potential future enhancements include:
+The API was tested using **Swagger UI**.
 
-* JWT Authentication
-* User registration and login
-* Password hashing
-* Refresh tokens
-* Role-Based Access Control (RBAC)
-* Unit and integration testing
-* CI/CD pipeline
-* Structured logging
-* Application monitoring
-* Production deployment
-* Rate limiting
-* API versioning
+The following functionality was verified:
+
+* ✅ Authentication/login
+* ✅ JWT-protected route
+* ✅ Second protected route
+* ✅ Create task
+* ✅ Retrieve authenticated user's tasks
+* ✅ Retrieve task by ID
+* ✅ Update task
+* ✅ Delete task
+* ✅ User-specific task ownership
+* ✅ Logout route
+* ✅ Unauthorized access handling
+* ✅ Dockerized API operation
+* ✅ PostgreSQL database operations
+* ✅ Alembic migrations
 
 ---
 
@@ -772,7 +1046,29 @@ Through this project, I learned how to:
 * Use health checks to coordinate service startup
 * Persist database data using Docker volumes
 * Keep sensitive configuration outside the source code
-* Structure a backend project for maintainability and future scalability
+* Implement JWT-based authentication
+* Protect API routes using FastAPI dependencies
+* Extract authenticated user identity from JWT claims
+* Associate database records with authenticated users
+* Enforce user-specific data access at the repository layer
+* Test protected APIs using Swagger UI
+
+---
+
+# 🔮 Future Improvements
+
+Potential future enhancements include:
+
+* Refresh token rotation
+* More comprehensive unit and integration testing
+* Automated CI/CD pipeline
+* Structured logging
+* Application monitoring
+* Production deployment
+* Rate limiting
+* API versioning
+* More advanced authorization and RBAC
+* Automated test coverage reporting
 
 ---
 
