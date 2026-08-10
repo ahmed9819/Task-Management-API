@@ -4,6 +4,9 @@ class Settings(BaseSettings):
     app_name: str = "Task Management API"
     app_version: str = "1.0.0"
     database_url: str 
+    supabase_url: str
+    supabase_publishable_key: str
+    supabase_jwks_url: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
